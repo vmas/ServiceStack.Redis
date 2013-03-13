@@ -877,10 +877,13 @@ namespace ServiceStack.Redis
                 cmdWithArgs.Add(sortOptions.Take.GetValueOrDefault(0).ToUtf8Bytes());
             }
 
-            if (sortOptions.GetPattern != null)
+            if (sortOptions.GetPatterns != null)
             {
-                cmdWithArgs.Add(Commands.Get);
-                cmdWithArgs.Add(sortOptions.GetPattern.ToUtf8Bytes());
+				foreach (string getPattern in sortOptions.GetPatterns)
+				{
+					cmdWithArgs.Add(Commands.Get);
+					cmdWithArgs.Add(getPattern.ToUtf8Bytes());
+				}
             }
 
             if (sortOptions.SortDesc)
