@@ -1341,6 +1341,47 @@ namespace ServiceStack.Redis
             return SendExpectInt(cmdWithArgs);
         }
 
+		public int ZUnionStore(string intoSetId, string[] setIds, int[] weights, UnionAggregate? aggregate)
+		{
+			var setIdsList = new List<string>(setIds);
+			setIdsList.Insert(0, setIds.Length.ToString());
+			setIdsList.Insert(0, intoSetId);
+
+			var cmdWithArgs = new List<byte[]>();
+			cmdWithArgs.Add(Commands.ZUnionStore);
+			cmdWithArgs.Add(intoSetId.ToUtf8Bytes());
+			cmdWithArgs.Add(setIds.Length.ToString().ToUtf8Bytes());
+			foreach(string setId in setIds) 
+			{
+				cmdWithArgs.Add(setId.ToUtf8Bytes());
+			}
+			if (weights != null)
+			{
+				cmdWithArgs.Add(Commands.Weights);
+				foreach (int weight in weights)
+				{
+					cmdWithArgs.Add(weight.ToString().ToUtf8Bytes());
+				}
+			}
+			if (aggregate != null)
+			{
+				cmdWithArgs.Add(Commands.Aggregate);
+				switch(aggregate.Value)
+				{
+					case UnionAggregate.Sum:
+						cmdWithArgs.Add(Commands.Sum);
+						break;
+					case UnionAggregate.Min:
+						cmdWithArgs.Add(Commands.Min);
+						break;
+					case UnionAggregate.Max:
+						cmdWithArgs.Add(Commands.Max);
+						break;
+				}
+			}
+			return SendExpectInt(cmdWithArgs.ToArray());
+		}
+
         public int ZInterStore(string intoSetId, params string[] setIds)
         {
             var setIdsList = new List<string>(setIds);
@@ -1350,6 +1391,47 @@ namespace ServiceStack.Redis
             var cmdWithArgs = MergeCommandWithArgs(Commands.ZInterStore, setIdsList.ToArray());
             return SendExpectInt(cmdWithArgs);
         }
+
+		public int ZInterStore(string intoSetId, string[] setIds, int[] weights, UnionAggregate? aggregate)
+		{
+			var setIdsList = new List<string>(setIds);
+			setIdsList.Insert(0, setIds.Length.ToString());
+			setIdsList.Insert(0, intoSetId);
+
+			var cmdWithArgs = new List<byte[]>();
+			cmdWithArgs.Add(Commands.ZInterStore);
+			cmdWithArgs.Add(intoSetId.ToUtf8Bytes());
+			cmdWithArgs.Add(setIds.Length.ToString().ToUtf8Bytes());
+			foreach (string setId in setIds)
+			{
+				cmdWithArgs.Add(setId.ToUtf8Bytes());
+			}
+			if (weights != null)
+			{
+				cmdWithArgs.Add(Commands.Weights);
+				foreach (int weight in weights)
+				{
+					cmdWithArgs.Add(weight.ToString().ToUtf8Bytes());
+				}
+			}
+			if (aggregate != null)
+			{
+				cmdWithArgs.Add(Commands.Aggregate);
+				switch (aggregate.Value)
+				{
+					case UnionAggregate.Sum:
+						cmdWithArgs.Add(Commands.Sum);
+						break;
+					case UnionAggregate.Min:
+						cmdWithArgs.Add(Commands.Min);
+						break;
+					case UnionAggregate.Max:
+						cmdWithArgs.Add(Commands.Max);
+						break;
+				}
+			}
+			return SendExpectInt(cmdWithArgs.ToArray());
+		}
 
         #endregion
 

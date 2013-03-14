@@ -157,6 +157,11 @@ namespace ServiceStack.Redis
         public readonly static byte[] Desc = "DESC".ToUtf8Bytes();
         public readonly static byte[] Alpha = "ALPHA".ToUtf8Bytes();
         public readonly static byte[] Store = "STORE".ToUtf8Bytes();
+		public readonly static byte[] Weights = "WEIGHTS".ToUtf8Bytes();
+		public readonly static byte[] Aggregate = "AGGREGATE".ToUtf8Bytes();
+		public readonly static byte[] Sum = "SUM".ToUtf8Bytes();
+		public readonly static byte[] Min = "MIN".ToUtf8Bytes();
+		public readonly static byte[] Max = "MAX".ToUtf8Bytes();
 
         public readonly static byte[] Eval = "EVAL".ToUtf8Bytes();
         public readonly static byte[] EvalSha = "EVALSHA".ToUtf8Bytes();
