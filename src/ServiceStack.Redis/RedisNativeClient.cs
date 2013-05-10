@@ -1103,6 +1103,32 @@ namespace ServiceStack.Redis
 			return SendExpectInt(Commands.ZAdd, setId.ToUtf8Bytes(), score.ToUtf8Bytes(), value);
 		}
 
+		public int ZAdd(string setId, IDictionary<string, long> valuesWithScores)
+		{
+			var cmdWithArgs = new List<byte[]>();
+			cmdWithArgs.Add(Commands.ZAdd);
+			cmdWithArgs.Add(setId.ToUtf8Bytes());
+			foreach (var kv in valuesWithScores)
+			{
+				cmdWithArgs.Add(kv.Value.ToUtf8Bytes());
+				cmdWithArgs.Add(kv.Key.ToUtf8Bytes());
+			}
+			return SendExpectInt(cmdWithArgs.ToArray());
+		}
+
+		public int ZAdd(string setId, IDictionary<string, double> valuesWithScores)
+		{
+			var cmdWithArgs = new List<byte[]>();
+			cmdWithArgs.Add(Commands.ZAdd);
+			cmdWithArgs.Add(setId.ToUtf8Bytes());
+			foreach (var kv in valuesWithScores)
+			{
+				cmdWithArgs.Add(kv.Value.ToFastUtf8Bytes());
+				cmdWithArgs.Add(kv.Key.ToUtf8Bytes());
+			}
+			return SendExpectInt(cmdWithArgs.ToArray());
+		}
+
         public int ZRem(string setId, byte[] value)
         {
             AssertSetIdAndValue(setId, value);

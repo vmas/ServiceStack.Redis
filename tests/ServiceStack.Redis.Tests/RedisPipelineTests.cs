@@ -182,6 +182,9 @@ namespace ServiceStack.Redis.Tests
 				pipeline.QueueCommand(r => r.GetSortedSetCount(SortedSetKey), intResult => collectionCounts.Add(intResult));
 				pipeline.QueueCommand(r => r.IncrementValue(Key), intResult => incrementResults.Add(intResult));
 
+				pipeline.QueueCommand(r => r.AddRangeToSortedSet(SortedSetKey, new List<string> { "sortedsetitem1", "sortedsetitem2", "sortedsetitem3" }, 0L));
+				pipeline.QueueCommand(r => r.AddRangeToSortedSet(SortedSetKey, new List<string> { "sortedsetitem1", "sortedsetitem2", "sortedsetitem3" }, 0.0));
+
 				pipeline.Flush();
 			}
 

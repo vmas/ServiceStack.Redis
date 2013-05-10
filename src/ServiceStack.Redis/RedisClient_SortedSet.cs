@@ -87,36 +87,12 @@ namespace ServiceStack.Redis
 
 		public bool AddRangeToSortedSet(string setId, List<string> values, double score)
 		{
-			var pipeline = CreatePipelineCommand();
-			var uSetId = setId.ToUtf8Bytes();
-			var uScore = score.ToFastUtf8Bytes();
-
-			foreach (var value in values)
-			{
-				pipeline.WriteCommand(Commands.ZAdd, uSetId, uScore, value.ToUtf8Bytes());
-			}
-
-			pipeline.Flush();
-
-			var success = pipeline.ReadAllAsIntsHaveSuccess();
-			return success;
+			return base.ZAdd(setId, values.ToDictionary(v => v, v => score)) > 0;
 		}
 
 		public bool AddRangeToSortedSet(string setId, List<string> values, long score)
 		{
-			var pipeline = CreatePipelineCommand();
-			var uSetId = setId.ToUtf8Bytes();
-			var uScore = score.ToUtf8Bytes();
-
-			foreach (var value in values)
-			{
-				pipeline.WriteCommand(Commands.ZAdd, uSetId, uScore, value.ToUtf8Bytes());
-			}
-
-			pipeline.Flush();
-
-			var success = pipeline.ReadAllAsIntsHaveSuccess();
-			return success;
+			return base.ZAdd(setId, values.ToDictionary(v => v, v => score)) > 0;
 		}
 
 		public bool RemoveItemFromSortedSet(string setId, string value)
