@@ -101,6 +101,11 @@ namespace ServiceStack.Redis
 			return base.HDel(hashId, key.ToUtf8Bytes()) == Success;
 		}
 
+		public bool RemoveEntriesFromHash(string hashId, params string[] keys)
+		{
+			return base.HDel(hashId, ConvertToBytes(keys)) == keys.Length;
+		}
+
 		public int GetHashCount(string hashId)
 		{
 			return base.HLen(hashId);

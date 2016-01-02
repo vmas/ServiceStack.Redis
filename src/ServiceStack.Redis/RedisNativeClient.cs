@@ -1543,6 +1543,18 @@ namespace ServiceStack.Redis
             return SendExpectInt(Commands.HDel, hashId.ToUtf8Bytes(), key);
         }
 
+		public int HDel(string hashId, params byte[][] keys)
+		{
+			if (hashId == null)
+				throw new ArgumentNullException("hashId");
+			if (keys.Length == 0)
+				throw new ArgumentNullException("keys");
+
+			var cmdArgs = MergeCommandWithArgs(Commands.HDel, hashId.ToUtf8Bytes(), keys);
+
+			return SendExpectInt(cmdArgs);
+		}
+
         public int HExists(string hashId, byte[] key)
         {
             AssertHashIdAndKey(hashId, key);
