@@ -410,6 +410,36 @@ namespace ServiceStack.Redis
 				throw new InvalidOperationException("Need a minimum read pool size of 1, then call Start()");
 		}
 
+		public int[] GetClientPoolActiveStates()
+		{
+			var activeStates = new int[writeClients.Length];
+			lock (writeClients)
+			{
+				for (int i = 0; i < writeClients.Length; i++)
+				{
+					activeStates[i] = writeClients[i] == null
+						? -1
+						: writeClients[i].Active ? 1 : 0;
+				}
+			}
+			return activeStates;
+		}
+
+		public int[] GetReadOnlyClientPoolActiveStates()
+		{
+			var activeStates = new int[readClients.Length];
+			lock (readClients)
+			{
+				for (int i = 0; i < readClients.Length; i++)
+				{
+					activeStates[i] = readClients[i] == null
+						? -1
+						: readClients[i].Active ? 1 : 0;
+				}
+			}
+			return activeStates;
+		}
+
 		~PooledRedisClientManager()
 		{
 			Dispose(false);
