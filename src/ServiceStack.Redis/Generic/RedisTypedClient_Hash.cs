@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2010 Liquidbit Ltd.
+// Copyright 2013 ServiceStack.
 //
 // Licensed under the same terms of Redis and ServiceStack: new BSD license.
 //
@@ -58,7 +58,7 @@ namespace ServiceStack.Redis.Generic
 			return client.RemoveEntryFromHash(hash.Id, key.SerializeToString());
 		}
 
-		public int GetHashCount<TKey>(IRedisHash<TKey, T> hash)
+		public long GetHashCount<TKey>(IRedisHash<TKey, T> hash)
 		{
 			return client.GetHashCount(hash.Id);
 		}

@@ -1,9 +1,11 @@
-[Join the new ServiceStack Google+ group](https://plus.google.com/u/0/communities/112445368900682590445) or
-follow [@servicestack](http://twitter.com/servicestack) for twitter updates.
+[Join the ServiceStack Google+ group](https://plus.google.com/u/0/communities/112445368900682590445) or
+follow [@servicestack](http://twitter.com/servicestack) for updates.
+
+This is a fork of ServiceStack.Redis before the license was changed to the Aferro GPL license.
 
 # An Open Source C# Client for Redis
 
-## New in v3.9.37
+_Note: the source code is provided as-is - no direct or commercial support is available for ServiceStack_
 
 ### New IRedisClient LUA API's
 
@@ -128,13 +130,11 @@ The class hierachy for the C# Redis clients effectively look like:
 
     RedisTypedClient (POCO) > RedisClient (string) > RedisNativeClient (raw byte[])
 
-Each client is optimized for maximum efficiency and provides layered functionality for maximum developer productivity:
+Each client provides a different layer of abstraction:
   
   * The RedisNativeClient exposes raw **byte[]** apis and does no marshalling and passes all values directly to redis.
   * The RedisClient assumes **string** values and simply converts strings to UTF8 bytes before sending to Redis
   * The RedisTypedClient provides a generic interface allowing you to add POCO values. The POCO types are serialized using [.NETs fastest JSON Serializer](http://www.servicestack.net/mythz_blog/?p=344) which is then converted to UTF8 bytes and sent to Redis.
-
-At all times you can pick the most optimal Redis Client for your needs so you can achieve maximum efficiency in your applications.
 
 ### Redis Client API Overview
 [![Redis Client API](http://servicestack.net/img/Redis-annotated-preview.png)](http://servicestack.net/img/Redis-annotated.png)
@@ -145,16 +145,6 @@ For multi-threaded applications you can choose from our different client connect
   * BasicRedisClientManager - a load-balance (master-write and read-slaves) client manager that returns a new [IRedisClient](https://github.com/ServiceStack/ServiceStack.Redis/wiki/IRedisClient) connection with the defaults specified (faster when accessing a redis-server instance on the same host).
   * PooledRedisClientManager - a load-balanced (master-write and read-slaves) client manager that utilizes a pool of redis client connections (faster when accessing a redis-server instance over the network).
 
-# Download
-
-You can download the Redis Client in any one of the following ways:
-
-* Packaged by default in [ServiceStack.dll](https://github.com/ServiceStack/ServiceStack/downloads)
-* Available to download separately as a stand-alone [ServiceStack.Redis.dll](https://github.com/ServiceStack/ServiceStack.Redis/downloads) 
-* As Source Code via Git: `git clone git://github.com/ServiceStack/ServiceStack.Redis.git`
-* For those interested in having a GUI admin tool to visualize your Redis data should check out the [Redis Admin UI](http://www.servicestack.net/mythz_blog/?p=381)
-
-[View the release notes](https://github.com/ServiceStack/ServiceStack.Redis/wiki/Redis-Client-Release-Notes).
 
 ### Redis Server builds for Windows
   
@@ -177,7 +167,7 @@ Contains all the examples, tutorials and resources you need to get you up to spe
 
 ### Specific Examples
   * [Using Transactions in Redis (i.e. MULTI/EXEC/DISCARD)](https://github.com/ServiceStack/ServiceStack.Redis/wiki/RedisTransactions)
-  * [Using Redis's built-in Publsih/Subscribe pattern for high performance network notifications](https://github.com/ServiceStack/ServiceStack.Redis/wiki/RedisPubSub)
+  * [Using Redis's built-in Publish/Subscribe pattern for high performance network notifications](https://github.com/ServiceStack/ServiceStack.Redis/wiki/RedisPubSub)
   * [Using Redis to create high performance *distributed locks* spannable across multiple app servers](https://github.com/ServiceStack/ServiceStack.Redis/wiki/RedisLocks)
 
 # Simple example using Redis Lists
@@ -188,7 +178,7 @@ _Full source code of this example is [viewable online](https://github.com/Servic
     using (var redisClient = new RedisClient())
     {
         //Create a 'strongly-typed' API that makes all Redis Value operations to apply against Shippers
-        IRedisTypedClient<Shipper> redis = redisClient.GetTypedClient<Shipper>();
+        IRedisTypedClient<Shipper> redis = redisClient.As<Shipper>();
 
         //Redis lists implement IList<T> while Redis sets implement ICollection<T>
         var currentShippers = redis.Lists["urn:shippers:current"];
@@ -343,3 +333,14 @@ _(Running inside a VS.NET/R# unit test on a 3 year old iMac)_
 
 Note: The total time taken includes an extra Redis operation for each record to store the id in a Redis set for each
 type as well as serializing and de-serializing each record using Service Stack's TypeSerializer.
+
+
+# Community Resources
+
+  - [Fan Messaging with ServiceStack.Redis](http://cornishdev.wordpress.com/2013/04/04/fan-messaging-with-servicestack-redis/) by [miket](http://stackoverflow.com/users/1804544/miket)
+  - [Redis and VB.Net](http://blogs.lessthandot.com/index.php/DataMgmt/DBProgramming/redis-and-vb-net) by [@chrissie1](https://twitter.com/chrissie1)
+  - [Using ServiceStack.Redis Part 2: Sets and Hashes](http://michaelsarchet.com/using-servicestack-redis-part-2-sets-and-hashes/) by [@msarchet](http://twitter.com/msarchet)
+  - [Using the ServiceStack.Redis Client](http://michaelsarchet.com/using-the-servicestack-redis-client/) by [@msarchet](http://twitter.com/msarchet)
+  - [Implementing ServiceStack.Redis.RedisClient (.NET Client for Redis)](http://www.narizwallace.com/2012/10/implementing-servicestack-redis-redisclient-net-client-for-redis/) by [@NarizWallace](https://twitter.com/NarizWallace)
+  - [Getting started with Redis in ASP.NET under Windows](http://maxivak.com/getting-started-with-redis-and-asp-net-mvc-under-windows/) by [@maxivak](https://twitter.com/maxivak)
+  - [Using Redis on Windows with ServiceStack](http://www.clippersoft.net/using-redis-on-windows-with-servicestack/)

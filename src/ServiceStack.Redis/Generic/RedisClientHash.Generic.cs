@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2010 Liquidbit Ltd.
+// Copyright 2013 ServiceStack.
 //
 // Licensed under the same terms of Redis and ServiceStack: new BSD license.
 //
@@ -86,7 +86,7 @@ namespace ServiceStack.Redis.Generic
 
 		public int Count
 		{
-			get { return client.GetHashCount(this); }
+			get { return (int)client.GetHashCount(this); }
 		}
 
 		public bool IsReadOnly

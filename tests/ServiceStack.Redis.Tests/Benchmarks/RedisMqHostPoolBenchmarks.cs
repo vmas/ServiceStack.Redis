@@ -7,7 +7,9 @@ using ServiceStack.Text;
 
 namespace ServiceStack.Redis.Tests.Benchmarks
 {
-    [TestFixture, Category("Integration"), Explicit]
+    [Ignore]
+    [Explicit]
+    [TestFixture, Category("Integration")]
     public class RedisMqHostPoolBenchmarks
     {
         public class Incr
@@ -22,7 +24,7 @@ namespace ServiceStack.Redis.Tests.Benchmarks
 
         private static RedisMqHostPool CreateMqHostPool(int threadCount = 1)
         {
-            var redisFactory = new BasicRedisClientManager();
+            var redisFactory = TestConfig.BasicClientManger;
             try
             {
                 redisFactory.Exec(redis => redis.FlushAll());

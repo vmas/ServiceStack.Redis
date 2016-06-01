@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2010 Liquidbit Ltd.
+// Copyright 2013 ServiceStack.
 //
 // Licensed under the same terms of Redis and ServiceStack: new BSD license.
 //
@@ -103,7 +103,7 @@ namespace ServiceStack.Redis.Generic
 		{
 			get
 			{
-				return client.GetListCount(this);
+				return (int)client.GetListCount(this);
 			}
 		}
 
@@ -123,9 +123,7 @@ namespace ServiceStack.Redis.Generic
 
 		public void Insert(int index, T item)
 		{
-			//TODO: replace with implementation involving creating on new temp list then replacing
-			//otherwise wait for native implementation
-			throw new NotImplementedException();
+            client.InsertAfterItemInList(this, this[index], item);
 		}
 
 		public void RemoveAt(int index)
@@ -169,12 +167,12 @@ namespace ServiceStack.Redis.Generic
 			client.TrimList(this, keepStartingFrom, keepEndingAt);
 		}
 
-		public int RemoveValue(T value)
+		public long RemoveValue(T value)
 		{
 			return client.RemoveItemFromList(this, value);
 		}
 
-		public int RemoveValue(T value, int noOfMatches)
+		public long RemoveValue(T value, int noOfMatches)
 		{
 			return client.RemoveItemFromList(this, value, noOfMatches);
 		}

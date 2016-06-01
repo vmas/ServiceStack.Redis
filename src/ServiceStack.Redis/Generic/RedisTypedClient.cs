@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2010 Liquidbit Ltd.
+// Copyright 2013 ServiceStack.
 //
 // Licensed under the same terms of Redis and ServiceStack: new BSD license.
 //
@@ -450,9 +450,11 @@ namespace ServiceStack.Redis.Generic
 
 		public void DeleteAll()
 		{
-			var urnKeys = client.GetAllItemsFromSet(this.TypeIdsSetKey);
+			var ids = client.GetAllItemsFromSet(this.TypeIdsSetKey);
+            var urnKeys = ids.ConvertAll(t => client.UrnKey<T>(t));
             if (urnKeys.Count > 0)
             {
+                
                 this.RemoveEntry(urnKeys.ToArray());
                 this.RemoveEntry(this.TypeIdsSetKey);
             }

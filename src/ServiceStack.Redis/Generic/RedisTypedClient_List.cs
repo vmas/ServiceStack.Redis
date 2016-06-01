@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2010 Liquidbit Ltd.
+// Copyright 2013 ServiceStack.
 //
 // Licensed under the same terms of Redis and ServiceStack: new BSD license.
 //
@@ -127,18 +127,18 @@ namespace ServiceStack.Redis.Generic
 			client.LTrim(fromList.Id, keepStartingFrom, keepEndingAt);
 		}
 
-		public int RemoveItemFromList(IRedisList<T> fromList, T value)
+		public long RemoveItemFromList(IRedisList<T> fromList, T value)
 		{
 			const int removeAll = 0;
 			return client.LRem(fromList.Id, removeAll, SerializeValue(value));
 		}
 
-		public int RemoveItemFromList(IRedisList<T> fromList, T value, int noOfMatches)
+		public long RemoveItemFromList(IRedisList<T> fromList, T value, int noOfMatches)
 		{
 			return client.LRem(fromList.Id, noOfMatches, SerializeValue(value));
 		}
 
-		public int GetListCount(IRedisList<T> fromList)
+		public long GetListCount(IRedisList<T> fromList)
 		{
 			return client.LLen(fromList.Id);
 		}
@@ -153,7 +153,17 @@ namespace ServiceStack.Redis.Generic
 			client.LSet(toList.Id, listIndex, SerializeValue(value));
 		}
 
-		public void EnqueueItemOnList(IRedisList<T> fromList, T item)
+	    public void InsertBeforeItemInList(IRedisList<T> toList, T pivot, T value)
+	    {
+            client.LInsert(toList.Id, insertBefore: true, pivot: SerializeValue(pivot), value: SerializeValue(value));
+	    }
+
+	    public void InsertAfterItemInList(IRedisList<T> toList, T pivot, T value)
+	    {
+            client.LInsert(toList.Id, insertBefore: false, pivot: SerializeValue(pivot), value: SerializeValue(value));
+        }
+
+	    public void EnqueueItemOnList(IRedisList<T> fromList, T item)
 		{
 			client.LPush(fromList.Id, SerializeValue(item));
 		}

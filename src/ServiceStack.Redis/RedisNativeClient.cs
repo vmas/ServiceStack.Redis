@@ -34,7 +34,7 @@ namespace ServiceStack.Redis
     {
         private static readonly ILog log = LogManager.GetLogger(typeof(RedisNativeClient));
 
-        public const int DefaultDb = 0;
+        public const long DefaultDb = 0;
         public const int DefaultPort = 6379;
         public const string DefaultHost = "localhost";
 
@@ -63,7 +63,7 @@ namespace ServiceStack.Redis
         internal int IdleTimeOutSecs = 240; //default on redis is 300
         internal long LastConnectedAtTimestamp;
 
-        public int Id { get; set; }
+        public long Id { get; set; }
 
         public string Host { get; private set; }
         public int Port { get; private set; }
@@ -111,12 +111,12 @@ namespace ServiceStack.Redis
         }
 
         public RedisNativeClient(string host)
-            : this(host, DefaultPort) {}
+            : this(host.SplitOnLast(':')[0], host.Contains(':') ? int.Parse(host.SplitOnLast(':')[1]) : DefaultPort) { }
 
         public RedisNativeClient(string host, int port)
             : this(host, port, null) {}
 
-        public RedisNativeClient(string host, int port, string password)
+        public RedisNativeClient(string host, int port, string password = null, long db = DefaultDb)
         {
             if (host == null)
                 throw new ArgumentNullException("host");
@@ -126,6 +126,7 @@ namespace ServiceStack.Redis
             SendTimeout = -1;
 			ReceiveTimeout = -1;
             Password = password;
+            Db = db;
         }
 
         public RedisNativeClient()
@@ -133,8 +134,8 @@ namespace ServiceStack.Redis
         
         #region Common Operations
 
-        int db;
-        public int Db
+        long db;
+        public long Db
         {
             get
             {
@@ -144,15 +145,14 @@ namespace ServiceStack.Redis
             set
             {
                 db = value;
-                SendExpectSuccess(Commands.Select, db.ToUtf8Bytes());
             }
         }
 
-        public int DbSize
+        public long DbSize
         {
             get
             {
-                return SendExpectInt(Commands.DbSize);
+                return SendExpectLong(Commands.DbSize);
             }
         }
 
@@ -160,7 +160,7 @@ namespace ServiceStack.Redis
         {
             get
             {
-                var t = SendExpectInt(Commands.LastSave);
+                var t = SendExpectLong(Commands.LastSave);
                 return DateTimeExtensions.FromUnixTime(t);
             }
         }
@@ -268,15 +268,15 @@ namespace ServiceStack.Redis
 			if (key == null)
 				throw new ArgumentNullException("key");
 
-			return SendExpectInt(Commands.Move, key.ToUtf8Bytes(), db.ToUtf8Bytes()) == Success;
+			return SendExpectLong(Commands.Move, key.ToUtf8Bytes(), db.ToUtf8Bytes()) == Success;
 		}
 
-    	public int ObjectIdleTime(string key)
+    	public long ObjectIdleTime(string key)
     	{
 			if (key == null)
 				throw new ArgumentNullException("key");
 			
-			return SendExpectInt(Commands.Object, Commands.IdleTime, key.ToUtf8Bytes());
+			return SendExpectLong(Commands.Object, Commands.IdleTime, key.ToUtf8Bytes());
 		}
 
     	public string Type(string key)
@@ -307,12 +307,12 @@ namespace ServiceStack.Redis
             throw CreateResponseError("Invalid value");
         }
 
-    	public int StrLen(string key)
+    	public long StrLen(string key)
     	{
 			if (key == null)
 				throw new ArgumentNullException("key");
 
-			return SendExpectInt(Commands.StrLen, key.ToUtf8Bytes());
+			return SendExpectLong(Commands.StrLen, key.ToUtf8Bytes());
 		}
 
     	public void Set(string key, byte[] value)
@@ -325,6 +325,37 @@ namespace ServiceStack.Redis
                 throw new ArgumentException("value exceeds 1G", "value");
 
             SendExpectSuccess(Commands.Set, key.ToUtf8Bytes(), value);
+        }
+
+    	public void Set(string key, byte[] value, int expirySeconds, long expiryMs = 0, bool? exists = null)
+        {
+            if (key == null)
+                throw new ArgumentNullException("key");
+            value = value ?? new byte[0];
+
+            if (value.Length > OneGb)
+                throw new ArgumentException("value exceeds 1G", "value");
+
+            if (exists == null)
+            {
+                if (expirySeconds > 0)
+                    SendExpectSuccess(Commands.Set, key.ToUtf8Bytes(), value, Commands.Ex, expirySeconds.ToUtf8Bytes());
+                else if (expiryMs > 0)
+                    SendExpectSuccess(Commands.Set, key.ToUtf8Bytes(), value, Commands.Px, expiryMs.ToUtf8Bytes());
+                else
+                    SendExpectSuccess(Commands.Set, key.ToUtf8Bytes(), value);
+            }
+            else
+            {
+                var entryExists = exists.Value ? Commands.Xx : Commands.Nx;
+
+                if (expirySeconds > 0)
+                    SendExpectSuccess(Commands.Set, key.ToUtf8Bytes(), value, Commands.Ex, expirySeconds.ToUtf8Bytes(), entryExists);
+                else if (expiryMs > 0)
+                    SendExpectSuccess(Commands.Set, key.ToUtf8Bytes(), value, Commands.Px, expiryMs.ToUtf8Bytes(), entryExists);
+                else
+                    SendExpectSuccess(Commands.Set, key.ToUtf8Bytes(), value, entryExists);
+            }
         }
 
         public void SetEx(string key, int expireInSeconds, byte[] value)
@@ -344,7 +375,7 @@ namespace ServiceStack.Redis
 			if (key == null)
 				throw new ArgumentNullException("key");
 
-			return SendExpectInt(Commands.Persist, key.ToUtf8Bytes()) == Success;
+			return SendExpectLong(Commands.Persist, key.ToUtf8Bytes()) == Success;
 		}
 
     	public void PSetEx(string key, long expireInMs, byte[] value)
@@ -355,7 +386,7 @@ namespace ServiceStack.Redis
 			SendExpectSuccess(Commands.PSetEx, expireInMs.ToUtf8Bytes(), key.ToUtf8Bytes(), value);
 		}
 
-    	public int SetNX(string key, byte[] value)
+    	public long SetNX(string key, byte[] value)
         {
             if (key == null)
                 throw new ArgumentNullException("key");
@@ -364,7 +395,7 @@ namespace ServiceStack.Redis
             if (value.Length > OneGb)
                 throw new ArgumentException("value exceeds 1G", "value");
 
-            return SendExpectInt(Commands.SetNx, key.ToUtf8Bytes(), value);
+            return SendExpectLong(Commands.SetNx, key.ToUtf8Bytes(), value);
         }
 
     	public void MSet(byte[][] keys, byte[][] values)
@@ -383,7 +414,7 @@ namespace ServiceStack.Redis
     	{
 			var keysAndValues = MergeCommandWithKeysAndValues(Commands.MSet, keys, values);
 
-			return SendExpectInt(keysAndValues) == Success;
+			return SendExpectLong(keysAndValues) == Success;
 		}
 
     	public bool MSetNx(string[] keys, byte[][] values)
@@ -430,29 +461,29 @@ namespace ServiceStack.Redis
             return SendExpectData(Commands.GetSet, key.ToUtf8Bytes(), value);
         }
 
-        public int Exists(string key)
+        public long Exists(string key)
         {
             if (key == null)
                 throw new ArgumentNullException("key");
 
-            return SendExpectInt(Commands.Exists, key.ToUtf8Bytes());
+            return SendExpectLong(Commands.Exists, key.ToUtf8Bytes());
         }
 
-        public int Del(string key)
+        public long Del(string key)
         {
             if (key == null)
                 throw new ArgumentNullException("key");
 
-            return SendExpectInt(Commands.Del, key.ToUtf8Bytes());
+            return SendExpectLong(Commands.Del, key.ToUtf8Bytes());
         }
 
-        public int Del(params string[] keys)
+        public long Del(params string[] keys)
         {
             if (keys == null)
                 throw new ArgumentNullException("keys");
 
             var cmdWithArgs = MergeCommandWithArgs(Commands.Del, keys);
-            return SendExpectInt(cmdWithArgs);
+            return SendExpectLong(cmdWithArgs);
         }
 
         public long Incr(string key)
@@ -495,12 +526,12 @@ namespace ServiceStack.Redis
             return SendExpectLong(Commands.DecrBy, key.ToUtf8Bytes(), count.ToUtf8Bytes());
         }
 
-        public int Append(string key, byte[] value)
+        public long Append(string key, byte[] value)
         {
             if (key == null)
                 throw new ArgumentNullException("key");
 
-            return SendExpectInt(Commands.Append, key.ToUtf8Bytes(), value);
+            return SendExpectLong(Commands.Append, key.ToUtf8Bytes(), value);
         }
         
         public byte[] Substr(string key, int fromIndex, int toIndex)
@@ -519,23 +550,23 @@ namespace ServiceStack.Redis
 			return SendExpectData(Commands.GetRange, key.ToUtf8Bytes(), fromIndex.ToUtf8Bytes(), toIndex.ToUtf8Bytes());
 		}
 
-    	public int SetRange(string key, int offset, byte[] value)
+    	public long SetRange(string key, int offset, byte[] value)
     	{
 			if (key == null)
 				throw new ArgumentNullException("key");
 
-			return SendExpectInt(Commands.SetRange, key.ToUtf8Bytes(), offset.ToUtf8Bytes(), value);
+			return SendExpectLong(Commands.SetRange, key.ToUtf8Bytes(), offset.ToUtf8Bytes(), value);
 		}
 
-    	public int GetBit(string key, int offset)
+    	public long GetBit(string key, int offset)
         {
             if (key == null)
                 throw new ArgumentNullException("key");
 
-            return SendExpectInt(Commands.GetBit, key.ToUtf8Bytes(), offset.ToUtf8Bytes());
+            return SendExpectLong(Commands.GetBit, key.ToUtf8Bytes(), offset.ToUtf8Bytes());
         }
 
-        public int SetBit(string key, int offset, int value)
+        public long SetBit(string key, int offset, int value)
         {
             if (key == null)
                 throw new ArgumentNullException("key");
@@ -543,7 +574,15 @@ namespace ServiceStack.Redis
             if (value > 1 || value < 0)
                 throw  new ArgumentException("value is out of range");
 
-            return SendExpectInt(Commands.SetBit, key.ToUtf8Bytes(), offset.ToUtf8Bytes(), value.ToUtf8Bytes());
+            return SendExpectLong(Commands.SetBit, key.ToUtf8Bytes(), offset.ToUtf8Bytes(), value.ToUtf8Bytes());
+        }
+
+        public long BitCount(string key)
+        {
+            if (key == null)
+                throw new ArgumentNullException("key");
+
+            return SendExpectLong(Commands.BitCount, key.ToUtf8Bytes());
         }
 
         public string RandomKey()
@@ -568,7 +607,7 @@ namespace ServiceStack.Redis
 			if (newKeyname == null)
 				throw new ArgumentNullException("newKeyname");
 
-			return SendExpectInt(Commands.RenameNx, oldKeyname.ToUtf8Bytes(), newKeyname.ToUtf8Bytes()) == Success;
+			return SendExpectLong(Commands.RenameNx, oldKeyname.ToUtf8Bytes(), newKeyname.ToUtf8Bytes()) == Success;
 		}
 
     	public bool Expire(string key, int seconds)
@@ -576,7 +615,7 @@ namespace ServiceStack.Redis
             if (key == null)
                 throw new ArgumentNullException("key");
 
-			return SendExpectInt(Commands.Expire, key.ToUtf8Bytes(), seconds.ToUtf8Bytes()) == Success;
+			return SendExpectLong(Commands.Expire, key.ToUtf8Bytes(), seconds.ToUtf8Bytes()) == Success;
         }
 
 		public bool PExpire(string key, long ttlMs)
@@ -584,7 +623,7 @@ namespace ServiceStack.Redis
 			if (key == null)
 				throw new ArgumentNullException("key");
 
-			return SendExpectInt(Commands.PExpire, key.ToUtf8Bytes(), ttlMs.ToUtf8Bytes()) == Success;
+			return SendExpectLong(Commands.PExpire, key.ToUtf8Bytes(), ttlMs.ToUtf8Bytes()) == Success;
 		}
 
     	public bool ExpireAt(string key, long unixTime)
@@ -592,7 +631,7 @@ namespace ServiceStack.Redis
             if (key == null)
                 throw new ArgumentNullException("key");
 
-            return SendExpectInt(Commands.ExpireAt, key.ToUtf8Bytes(), unixTime.ToUtf8Bytes()) == Success;
+            return SendExpectLong(Commands.ExpireAt, key.ToUtf8Bytes(), unixTime.ToUtf8Bytes()) == Success;
         }
 
     	public bool PExpireAt(string key, long unixTimeMs)
@@ -600,15 +639,15 @@ namespace ServiceStack.Redis
 			if (key == null)
 				throw new ArgumentNullException("key");
 
-			return SendExpectInt(Commands.PExpireAt, key.ToUtf8Bytes(), unixTimeMs.ToUtf8Bytes()) == Success;
+			return SendExpectLong(Commands.PExpireAt, key.ToUtf8Bytes(), unixTimeMs.ToUtf8Bytes()) == Success;
 		}
 
-    	public int Ttl(string key)
+    	public long Ttl(string key)
         {
             if (key == null)
                 throw new ArgumentNullException("key");
 
-            return SendExpectInt(Commands.Ttl, key.ToUtf8Bytes());
+            return SendExpectLong(Commands.Ttl, key.ToUtf8Bytes());
         }
 
     	public long PTtl(string key)
@@ -657,6 +696,32 @@ namespace ServiceStack.Redis
         public void FlushAll()
         {
             SendExpectSuccess(Commands.FlushAll);
+        }
+
+        public string ClientGetName()
+        {
+            return SendExpectString(Commands.Client, Commands.GetName);
+        }
+
+        public void ClientSetName(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentException("Name cannot be null or empty");
+
+            if (name.Contains(" "))
+                throw new ArgumentException("Name cannot contain spaces");
+
+            SendExpectSuccess(Commands.Client, Commands.SetName, name.ToUtf8Bytes());
+        }
+
+        public byte[] ClientList()
+        {
+            return SendExpectData(Commands.Client, Commands.List);
+        }
+
+        public void ClientKill(string clientAddr)
+        {
+            SendExpectSuccess(Commands.Client, Commands.Kill, clientAddr.ToUtf8Bytes());
         }
 
         public byte[][] Keys(string pattern)
@@ -742,18 +807,43 @@ namespace ServiceStack.Redis
             return SendExpectMultiData(Commands.SMembers, setId.ToUtf8Bytes());
         }
 
-        public int SAdd(string setId, byte[] value)
+        public long SAdd(string setId, byte[] value)
         {
             AssertSetIdAndValue(setId, value);
 
-            return SendExpectInt(Commands.SAdd, setId.ToUtf8Bytes(), value);
+            return SendExpectLong(Commands.SAdd, setId.ToUtf8Bytes(), value);
         }
 
-        public int SRem(string setId, byte[] value)
+        public long SAdd(string setId, byte[][] values)
+        {
+            if (setId == null)
+                throw new ArgumentNullException("setId");
+            if (values == null)
+                throw new ArgumentNullException("values");
+            if (values.Length == 0)
+                throw new ArgumentException("values");
+
+            var cmdWithArgs = MergeCommandWithArgs(Commands.SAdd, setId.ToUtf8Bytes(), values);
+            return SendExpectLong(cmdWithArgs);
+        }
+        public long SRem(string setId, byte[] value)
         {
             AssertSetIdAndValue(setId, value);
 
-            return SendExpectInt(Commands.SRem, setId.ToUtf8Bytes(), value);
+            return SendExpectLong(Commands.SRem, setId.ToUtf8Bytes(), value);
+        }
+
+        public long SRem(string setId, byte[][] values)
+        {
+            if (setId == null)
+                throw new ArgumentNullException("setId");
+            if (values == null)
+                throw new ArgumentNullException("values");
+            if (values.Length == 0)
+                throw new ArgumentException("values");
+
+            var cmdWithArgs = MergeCommandWithArgs(Commands.SRem, setId.ToUtf8Bytes(), values);
+            return SendExpectLong(cmdWithArgs);
         }
 
         public byte[] SPop(string setId)
@@ -774,20 +864,20 @@ namespace ServiceStack.Redis
             SendExpectSuccess(Commands.SMove, fromSetId.ToUtf8Bytes(), toSetId.ToUtf8Bytes(), value);
         }
 
-        public int SCard(string setId)
+        public long SCard(string setId)
         {
             if (setId == null)
                 throw new ArgumentNullException("setId");
 
-            return SendExpectInt(Commands.SCard, setId.ToUtf8Bytes());
+            return SendExpectLong(Commands.SCard, setId.ToUtf8Bytes());
         }
 
-        public int SIsMember(string setId, byte[] value)
+        public long SIsMember(string setId, byte[] value)
         {
             if (setId == null)
                 throw new ArgumentNullException("setId");
 
-            return SendExpectInt(Commands.SIsMember, setId.ToUtf8Bytes(), value);
+            return SendExpectLong(Commands.SIsMember, setId.ToUtf8Bytes(), value);
         }
 
         public byte[][] SInter(params string[] setIds)
@@ -844,6 +934,11 @@ namespace ServiceStack.Redis
             return SendExpectData(Commands.SRandMember, setId.ToUtf8Bytes());
         }
 
+        public byte[][] SRandMember(string setId, int count)
+        {
+            return SendExpectMultiData(Commands.SRandMember, setId.ToUtf8Bytes(), count.ToUtf8Bytes());
+        }
+
         #endregion
 
 
@@ -877,14 +972,11 @@ namespace ServiceStack.Redis
                 cmdWithArgs.Add(sortOptions.Take.GetValueOrDefault(0).ToUtf8Bytes());
             }
 
-            if (sortOptions.GetPatterns != null)
+            if (sortOptions.GetPattern != null)
             {
-				foreach (string getPattern in sortOptions.GetPatterns)
-				{
-					cmdWithArgs.Add(Commands.Get);
-					cmdWithArgs.Add(getPattern.ToUtf8Bytes());
-				}
-            }
+				cmdWithArgs.Add(Commands.Get);
+				cmdWithArgs.Add(sortOptions.GetPattern.ToUtf8Bytes());
+			}
 
             if (sortOptions.SortDesc)
             {
@@ -905,29 +997,59 @@ namespace ServiceStack.Redis
             return SendExpectMultiData(cmdWithArgs.ToArray());
         }
 
-        public int RPush(string listId, byte[] value)
+        public long RPush(string listId, byte[] value)
         {
             AssertListIdAndValue(listId, value);
 
-            return SendExpectInt(Commands.RPush, listId.ToUtf8Bytes(), value);
+            return SendExpectLong(Commands.RPush, listId.ToUtf8Bytes(), value);
         }
 
-    	public int RPushX(string listId, byte[] value)
+        public long RPush(string listId, byte[][] values)
     	{
-    		throw new NotImplementedException();
+            if (listId == null)
+                throw new ArgumentNullException("listId");
+            if (values == null)
+                throw new ArgumentNullException("values");
+            if (values.Length == 0)
+                throw new ArgumentException("values");
+
+            var cmdWithArgs = MergeCommandWithArgs(Commands.RPush, listId.ToUtf8Bytes(), values);
+            return SendExpectLong(cmdWithArgs);
     	}
 
-    	public int LPush(string listId, byte[] value)
+        public long RPushX(string listId, byte[] value)
         {
             AssertListIdAndValue(listId, value);
 
-            return SendExpectInt(Commands.LPush, listId.ToUtf8Bytes(), value);
+            return SendExpectLong(Commands.RPushX, listId.ToUtf8Bytes(), value);
         }
 
-    	public int LPushX(string listId, byte[] value)
+    	public long LPush(string listId, byte[] value)
     	{
-    		throw new NotImplementedException();
+            AssertListIdAndValue(listId, value);
+
+            return SendExpectLong(Commands.LPush, listId.ToUtf8Bytes(), value);
     	}
+
+        public long LPush(string listId, byte[][] values)
+        {
+            if (listId == null)
+                throw new ArgumentNullException("listId");
+            if (values == null)
+                throw new ArgumentNullException("values");
+            if (values.Length == 0)
+                throw new ArgumentException("values");
+
+            var cmdWithArgs = MergeCommandWithArgs(Commands.LPush, listId.ToUtf8Bytes(), values);
+            return SendExpectLong(cmdWithArgs);
+        }
+
+        public long LPushX(string listId, byte[] value)
+        {
+            AssertListIdAndValue(listId, value);
+
+            return SendExpectLong(Commands.LPushX, listId.ToUtf8Bytes(), value);
+        }
 
     	public void LTrim(string listId, int keepStartingFrom, int keepEndingAt)
         {
@@ -937,20 +1059,20 @@ namespace ServiceStack.Redis
             SendExpectSuccess(Commands.LTrim, listId.ToUtf8Bytes(), keepStartingFrom.ToUtf8Bytes(), keepEndingAt.ToUtf8Bytes());
         }
 
-        public int LRem(string listId, int removeNoOfMatches, byte[] value)
+        public long LRem(string listId, int removeNoOfMatches, byte[] value)
         {
             if (listId == null)
                 throw new ArgumentNullException("listId");
 
-            return SendExpectInt(Commands.LRem, listId.ToUtf8Bytes(), removeNoOfMatches.ToUtf8Bytes(), value);
+            return SendExpectLong(Commands.LRem, listId.ToUtf8Bytes(), removeNoOfMatches.ToUtf8Bytes(), value);
         }
 
-        public int LLen(string listId)
+        public long LLen(string listId)
         {
             if (listId == null)
                 throw new ArgumentNullException("listId");
 
-            return SendExpectInt(Commands.LLen, listId.ToUtf8Bytes());
+            return SendExpectLong(Commands.LLen, listId.ToUtf8Bytes());
         }
 
         public byte[] LIndex(string listId, int listIndex)
@@ -959,6 +1081,16 @@ namespace ServiceStack.Redis
                 throw new ArgumentNullException("listId");
 
             return SendExpectData(Commands.LIndex, listId.ToUtf8Bytes(), listIndex.ToUtf8Bytes());
+        }
+
+        public void LInsert(string listId, bool insertBefore, byte[] pivot, byte[] value)
+        {
+            if (listId == null)
+                throw new ArgumentNullException("listId");
+
+            var position = insertBefore ? Commands.Before : Commands.After;
+
+            SendExpectSuccess(Commands.LInsert, listId.ToUtf8Bytes(), position, pivot, value);
         }
 
         public void LSet(string listId, int listIndex, byte[] value)
@@ -1089,21 +1221,21 @@ namespace ServiceStack.Redis
                 throw new ArgumentNullException("value");
         }
 
-		public int ZAdd(string setId, double score, byte[] value)
+		public long ZAdd(string setId, double score, byte[] value)
 		{
 			AssertSetIdAndValue(setId, value);
 
-			return SendExpectInt(Commands.ZAdd, setId.ToUtf8Bytes(), score.ToFastUtf8Bytes(), value);
+			return SendExpectLong(Commands.ZAdd, setId.ToUtf8Bytes(), score.ToFastUtf8Bytes(), value);
 		}
 
-		public int ZAdd(string setId, long score, byte[] value)
+		public long ZAdd(string setId, long score, byte[] value)
 		{
 			AssertSetIdAndValue(setId, value);
 
-			return SendExpectInt(Commands.ZAdd, setId.ToUtf8Bytes(), score.ToUtf8Bytes(), value);
+			return SendExpectLong(Commands.ZAdd, setId.ToUtf8Bytes(), score.ToUtf8Bytes(), value);
 		}
 
-		public int ZAdd(string setId, IDictionary<string, long> valuesWithScores)
+		public long ZAdd(string setId, IDictionary<string, long> valuesWithScores)
 		{
 			var cmdWithArgs = new List<byte[]>();
 			cmdWithArgs.Add(Commands.ZAdd);
@@ -1113,10 +1245,10 @@ namespace ServiceStack.Redis
 				cmdWithArgs.Add(kv.Value.ToUtf8Bytes());
 				cmdWithArgs.Add(kv.Key.ToUtf8Bytes());
 			}
-			return SendExpectInt(cmdWithArgs.ToArray());
+			return SendExpectLong(cmdWithArgs.ToArray());
 		}
 
-		public int ZAdd(string setId, IDictionary<string, double> valuesWithScores)
+		public long ZAdd(string setId, IDictionary<string, double> valuesWithScores)
 		{
 			var cmdWithArgs = new List<byte[]>();
 			cmdWithArgs.Add(Commands.ZAdd);
@@ -1126,16 +1258,67 @@ namespace ServiceStack.Redis
 				cmdWithArgs.Add(kv.Value.ToFastUtf8Bytes());
 				cmdWithArgs.Add(kv.Key.ToUtf8Bytes());
 			}
-			return SendExpectInt(cmdWithArgs.ToArray());
+			return SendExpectLong(cmdWithArgs.ToArray());
 		}
 
-        public int ZRem(string setId, byte[] value)
+        public long ZAdd(string setId, List<KeyValuePair<byte[], double>> pairs)        {
+            if (setId == null)
+                throw new ArgumentNullException("setId");
+            if (pairs == null)
+                throw new ArgumentNullException("pairs");
+            if (pairs.Count == 0)
+                throw new ArgumentOutOfRangeException("pairs");
+
+            var mergedBytes = new byte[2 + pairs.Count * 2][];
+            mergedBytes[0] = Commands.ZAdd;
+            mergedBytes[1] = setId.ToUtf8Bytes();
+            for (var i = 0; i < pairs.Count; i++)
+            {
+                mergedBytes[i * 2 + 2] = pairs[i].Value.ToFastUtf8Bytes();
+                mergedBytes[i * 2 + 3] = pairs[i].Key;
+            }
+            return SendExpectLong(mergedBytes);
+        }
+
+        public long ZAdd(string setId, List<KeyValuePair<byte[], long>> pairs)
+        {
+            if (setId == null)
+                throw new ArgumentNullException("setId");
+            if (pairs == null)
+                throw new ArgumentNullException("pairs");
+            if (pairs.Count == 0)
+                throw new ArgumentOutOfRangeException("pairs");
+
+            var mergedBytes = new byte[2 + pairs.Count * 2][];
+            mergedBytes[0] = Commands.ZAdd;
+            mergedBytes[1] = setId.ToUtf8Bytes();
+            for (var i = 0; i < pairs.Count; i++)
+            {
+                mergedBytes[i * 2 + 2] = pairs[i].Value.ToUtf8Bytes();
+                mergedBytes[i * 2 + 3] = pairs[i].Key;
+            }
+            return SendExpectLong(mergedBytes);
+        }
+
+        public long ZRem(string setId, byte[] value)
         {
             AssertSetIdAndValue(setId, value);
 
-            return SendExpectInt(Commands.ZRem, setId.ToUtf8Bytes(), value);
+            return SendExpectLong(Commands.ZRem, setId.ToUtf8Bytes(), value);
         }
 
+        public long ZRem(string setId, byte[][] values)
+        {
+            if (setId == null)
+                throw new ArgumentNullException("setId");
+            if (values == null)
+                throw new ArgumentNullException("values");
+            if (values.Length == 0)
+                throw new ArgumentException("values");
+
+            var cmdWithArgs = MergeCommandWithArgs(Commands.ZRem, setId.ToUtf8Bytes(), values);
+            return SendExpectLong(cmdWithArgs);
+        }
 		public double ZIncrBy(string setId, double incrBy, byte[] value)
 		{
 			AssertSetIdAndValue(setId, value);
@@ -1150,18 +1333,18 @@ namespace ServiceStack.Redis
 			return SendExpectDouble(Commands.ZIncrBy, setId.ToUtf8Bytes(), incrBy.ToUtf8Bytes(), value);
 		}
 
-        public int ZRank(string setId, byte[] value)
+        public long ZRank(string setId, byte[] value)
         {
             AssertSetIdAndValue(setId, value);
 
-            return SendExpectInt(Commands.ZRank, setId.ToUtf8Bytes(), value);
+            return SendExpectLong(Commands.ZRank, setId.ToUtf8Bytes(), value);
         }
 
-        public int ZRevRank(string setId, byte[] value)
+        public long ZRevRank(string setId, byte[] value)
         {
             AssertSetIdAndValue(setId, value);
 
-            return SendExpectInt(Commands.ZRevRank, setId.ToUtf8Bytes(), value);
+            return SendExpectLong(Commands.ZRevRank, setId.ToUtf8Bytes(), value);
         }
 
         private byte[][] GetRange(byte[] commandBytes, string setId, int min, int max, bool withScores)
@@ -1298,55 +1481,55 @@ namespace ServiceStack.Redis
 			return GetRangeByScore(Commands.ZRevRangeByScore, setId, max, min, skip, take, true);
 		}
 
-        public int ZRemRangeByRank(string setId, int min, int max)
+        public long ZRemRangeByRank(string setId, int min, int max)
         {
             if (setId == null)
                 throw new ArgumentNullException("setId");
 
-            return SendExpectInt(Commands.ZRemRangeByRank, setId.ToUtf8Bytes(),
+            return SendExpectLong(Commands.ZRemRangeByRank, setId.ToUtf8Bytes(),
                 min.ToUtf8Bytes(), max.ToUtf8Bytes());
         }
 
-		public int ZRemRangeByScore(string setId, double fromScore, double toScore)
+		public long ZRemRangeByScore(string setId, double fromScore, double toScore)
 		{
 			if (setId == null)
 				throw new ArgumentNullException("setId");
 
-			return SendExpectInt(Commands.ZRemRangeByScore, setId.ToUtf8Bytes(),
+			return SendExpectLong(Commands.ZRemRangeByScore, setId.ToUtf8Bytes(),
 				fromScore.ToFastUtf8Bytes(), toScore.ToFastUtf8Bytes());
 		}
 
-		public int ZRemRangeByScore(string setId, long fromScore, long toScore)
+		public long ZRemRangeByScore(string setId, long fromScore, long toScore)
 		{
 			if (setId == null)
 				throw new ArgumentNullException("setId");
 
-			return SendExpectInt(Commands.ZRemRangeByScore, setId.ToUtf8Bytes(),
+			return SendExpectLong(Commands.ZRemRangeByScore, setId.ToUtf8Bytes(),
 				fromScore.ToUtf8Bytes(), toScore.ToUtf8Bytes());
 		}
 
-        public int ZCard(string setId)
+        public long ZCard(string setId)
         {
             if (setId == null)
                 throw new ArgumentNullException("setId");
 
-            return SendExpectInt(Commands.ZCard, setId.ToUtf8Bytes());
+            return SendExpectLong(Commands.ZCard, setId.ToUtf8Bytes());
         }
 
-        public int ZCount(string setId, double min, double max)
+        public long ZCount(string setId, double min, double max)
         {
             if (setId == null)
                 throw new ArgumentNullException("setId");
 
-            return SendExpectInt(Commands.ZCount, setId.ToUtf8Bytes(), min.ToUtf8Bytes(), max.ToUtf8Bytes());
+            return SendExpectLong(Commands.ZCount, setId.ToUtf8Bytes(), min.ToUtf8Bytes(), max.ToUtf8Bytes());
         }
 
-        public int ZCount(string setId, long min, long max)
+        public long ZCount(string setId, long min, long max)
         {
             if (setId == null)
                 throw new ArgumentNullException("setId");
 
-            return SendExpectInt(Commands.ZCount, setId.ToUtf8Bytes(), min.ToUtf8Bytes(), max.ToUtf8Bytes());
+            return SendExpectLong(Commands.ZCount, setId.ToUtf8Bytes(), min.ToUtf8Bytes(), max.ToUtf8Bytes());
         }
 
         public double ZScore(string setId, byte[] value)
@@ -1357,17 +1540,17 @@ namespace ServiceStack.Redis
             return SendExpectDouble(Commands.ZScore, setId.ToUtf8Bytes(), value);
         }
 
-        public int ZUnionStore(string intoSetId, params string[] setIds)
+        public long ZUnionStore(string intoSetId, params string[] setIds)
         {
             var setIdsList = new List<string>(setIds);
             setIdsList.Insert(0, setIds.Length.ToString());
             setIdsList.Insert(0, intoSetId);
 
             var cmdWithArgs = MergeCommandWithArgs(Commands.ZUnionStore, setIdsList.ToArray());
-            return SendExpectInt(cmdWithArgs);
+            return SendExpectLong(cmdWithArgs);
         }
 
-		public int ZUnionStore(string intoSetId, string[] setIds, int[] weights, UnionAggregate? aggregate)
+		public long ZUnionStore(string intoSetId, string[] setIds, int[] weights, UnionAggregate? aggregate)
 		{
 			var setIdsList = new List<string>(setIds);
 			setIdsList.Insert(0, setIds.Length.ToString());
@@ -1405,20 +1588,20 @@ namespace ServiceStack.Redis
 						break;
 				}
 			}
-			return SendExpectInt(cmdWithArgs.ToArray());
+			return SendExpectLong(cmdWithArgs.ToArray());
 		}
 
-        public int ZInterStore(string intoSetId, params string[] setIds)
+        public long ZInterStore(string intoSetId, params string[] setIds)
         {
             var setIdsList = new List<string>(setIds);
             setIdsList.Insert(0, setIds.Length.ToString());
             setIdsList.Insert(0, intoSetId);
 
             var cmdWithArgs = MergeCommandWithArgs(Commands.ZInterStore, setIdsList.ToArray());
-            return SendExpectInt(cmdWithArgs);
+            return SendExpectLong(cmdWithArgs);
         }
 
-		public int ZInterStore(string intoSetId, string[] setIds, int[] weights, UnionAggregate? aggregate)
+		public long ZInterStore(string intoSetId, string[] setIds, int[] weights, UnionAggregate? aggregate)
 		{
 			var setIdsList = new List<string>(setIds);
 			setIdsList.Insert(0, setIds.Length.ToString());
@@ -1456,7 +1639,7 @@ namespace ServiceStack.Redis
 						break;
 				}
 			}
-			return SendExpectInt(cmdWithArgs.ToArray());
+			return SendExpectLong(cmdWithArgs.ToArray());
 		}
 
         #endregion
@@ -1472,18 +1655,18 @@ namespace ServiceStack.Redis
                 throw new ArgumentNullException("key");
         }
 
-        public int HSet(string hashId, byte[] key, byte[] value)
+        public long HSet(string hashId, byte[] key, byte[] value)
         {
             AssertHashIdAndKey(hashId, key);
 
-            return SendExpectInt(Commands.HSet, hashId.ToUtf8Bytes(), key, value);
+            return SendExpectLong(Commands.HSet, hashId.ToUtf8Bytes(), key, value);
         }
 
-        public int HSetNX(string hashId, byte[] key, byte[] value)
+        public long HSetNX(string hashId, byte[] key, byte[] value)
         {
             AssertHashIdAndKey(hashId, key);
 
-            return SendExpectInt(Commands.HSetNx, hashId.ToUtf8Bytes(), key, value);
+            return SendExpectLong(Commands.HSetNx, hashId.ToUtf8Bytes(), key, value);
         }
 
         public void HMSet(string hashId, byte[][] keys, byte[][] values)
@@ -1496,18 +1679,18 @@ namespace ServiceStack.Redis
             SendExpectSuccess(cmdArgs);
         }
 
-        public int HIncrby(string hashId, byte[] key, int incrementBy)
+        public long HIncrby(string hashId, byte[] key, int incrementBy)
         {
             AssertHashIdAndKey(hashId, key);
 
-            return SendExpectInt(Commands.HIncrBy, hashId.ToUtf8Bytes(), key, incrementBy.ToString().ToUtf8Bytes());
+            return SendExpectLong(Commands.HIncrBy, hashId.ToUtf8Bytes(), key, incrementBy.ToString().ToUtf8Bytes());
         }
 
-        public int HIncrby(string hashId, byte[] key, long incrementBy)
+        public long HIncrby(string hashId, byte[] key, long incrementBy)
         {
             AssertHashIdAndKey(hashId, key);
 
-            return SendExpectInt(Commands.HIncrBy, hashId.ToUtf8Bytes(), key, incrementBy.ToString().ToUtf8Bytes());
+            return SendExpectLong(Commands.HIncrBy, hashId.ToUtf8Bytes(), key, incrementBy.ToString().ToUtf8Bytes());
         }
 
     	public double HIncrbyFloat(string hashId, byte[] key, double incrementBy)
@@ -1536,14 +1719,14 @@ namespace ServiceStack.Redis
             return SendExpectMultiData(cmdArgs);
         }
 
-        public int HDel(string hashId, byte[] key)
+        public long HDel(string hashId, byte[] key)
         {
             AssertHashIdAndKey(hashId, key);
 
-            return SendExpectInt(Commands.HDel, hashId.ToUtf8Bytes(), key);
+            return SendExpectLong(Commands.HDel, hashId.ToUtf8Bytes(), key);
         }
 
-		public int HDel(string hashId, params byte[][] keys)
+		public long HDel(string hashId, params byte[][] keys)
 		{
 			if (hashId == null)
 				throw new ArgumentNullException("hashId");
@@ -1552,22 +1735,22 @@ namespace ServiceStack.Redis
 
 			var cmdArgs = MergeCommandWithArgs(Commands.HDel, hashId.ToUtf8Bytes(), keys);
 
-			return SendExpectInt(cmdArgs);
+			return SendExpectLong(cmdArgs);
 		}
 
-        public int HExists(string hashId, byte[] key)
+        public long HExists(string hashId, byte[] key)
         {
             AssertHashIdAndKey(hashId, key);
 
-            return SendExpectInt(Commands.HExists, hashId.ToUtf8Bytes(), key);
+            return SendExpectLong(Commands.HExists, hashId.ToUtf8Bytes(), key);
         }
 
-        public int HLen(string hashId)
+        public long HLen(string hashId)
         {
             if (string.IsNullOrEmpty(hashId))
                 throw new ArgumentNullException("hashId");
 
-            return SendExpectInt(Commands.HLen, hashId.ToUtf8Bytes());
+            return SendExpectLong(Commands.HLen, hashId.ToUtf8Bytes());
         }
 
         public byte[][] HKeys(string hashId)
@@ -1594,9 +1777,9 @@ namespace ServiceStack.Redis
             return SendExpectMultiData(Commands.HGetAll, hashId.ToUtf8Bytes());
         }
 
-        public int Publish(string toChannel, byte[] message)
+        public long Publish(string toChannel, byte[] message)
         {
-            return SendExpectInt(Commands.Publish, toChannel.ToUtf8Bytes(), message);
+            return SendExpectLong(Commands.Publish, toChannel.ToUtf8Bytes(), message);
         }
 
         public byte[][] ReceiveMessages()

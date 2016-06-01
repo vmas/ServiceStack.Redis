@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2010 Liquidbit Ltd.
+// Copyright 2013 ServiceStack.
 //
 // Licensed under the same terms of Redis and ServiceStack: new BSD license.
 //
@@ -19,7 +19,7 @@ namespace ServiceStack.Redis
 			AutoStart = true; //Simplifies the most common use-case - registering in an IOC
 		}
 
-		public int? DefaultDb { get; set; }
+		public long? DefaultDb { get; set; }
 		public int MaxReadPoolSize { get; set; }
 		public int MaxWritePoolSize { get; set; }
 		public bool AutoStart { get; set; }

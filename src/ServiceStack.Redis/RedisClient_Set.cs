@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2010 Liquidbit Ltd.
+// Copyright 2013 ServiceStack.
 //
 // Licensed under the same terms of Redis and ServiceStack: new BSD license.
 //
@@ -134,7 +134,7 @@ namespace ServiceStack.Redis
 			SMove(fromSetId, toSetId, item.ToUtf8Bytes());
 		}
 
-		public int GetSetCount(string setId)
+		public long GetSetCount(string setId)
 		{
 			return SCard(setId);
 		}

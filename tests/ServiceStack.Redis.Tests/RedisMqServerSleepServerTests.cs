@@ -4,6 +4,7 @@ using System.Threading;
 using NUnit.Framework;
 using ServiceStack.Redis.Messaging;
 using ServiceStack.Text;
+using ServiceStack.Redis.Tests.Support;
 
 namespace ServiceStack.Redis.Tests
 {
@@ -39,10 +40,10 @@ namespace ServiceStack.Redis.Tests
 
         RedisMqServer CreateServer()
         {
-            using (var redis = new RedisClient())
+            using (var redis = new RedisClient(TestConfig.SingleHost))
                 redis.FlushAll();
 
-            var mqServer = new RedisMqServer(new BasicRedisClientManager());
+            var mqServer = new RedisMqServer(TestConfig.BasicClientManger);
             mqServer.RegisterHandler<Sleep0>(m => new Sleep0 { Id = counter.Sleep0++ });
 
             mqServer.RegisterHandler<Sleep10>(m => {
@@ -74,12 +75,14 @@ namespace ServiceStack.Redis.Tests
             RunFor(TimeSpan.FromSeconds(5));
         }
 
+        [Explicit]
         [Test]
         public void Run_for_10_seconds()
         {
             RunFor(TimeSpan.FromSeconds(10));
         }
 
+        [Explicit]
         [Test]
         public void Run_for_30_seconds()
         {

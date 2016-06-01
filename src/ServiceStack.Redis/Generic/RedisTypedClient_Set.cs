@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2010 Liquidbit Ltd.
+// Copyright 2013 ServiceStack.
 //
 // Licensed under the same terms of Redis and ServiceStack: new BSD license.
 //
@@ -21,7 +21,7 @@ namespace ServiceStack.Redis.Generic
 	{
 		public IHasNamed<IRedisSet<T>> Sets { get; set; }
 
-		public int Db
+		public long Db
 		{
 			get { return client.Db; }
 			set { client.Db = value; }
@@ -95,7 +95,7 @@ namespace ServiceStack.Redis.Generic
 			client.SMove(fromSet.Id, toSet.Id, SerializeValue(item));
 		}
 
-		public int GetSetCount(IRedisSet<T> set)
+		public long GetSetCount(IRedisSet<T> set)
 		{
 			return client.SCard(set.Id);
 		}

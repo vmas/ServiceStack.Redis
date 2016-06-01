@@ -1,11 +1,11 @@
 //
-// http://code.google.com/p/servicestack/wiki/ServiceStackRedis
+// https://github.com/ServiceStack/ServiceStack.Redis/
 // ServiceStack.Redis: ECMA CLI Binding to the Redis key-value storage system
 //
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2010 Liquidbit Ltd.
+// Copyright 2013 ServiceStack.
 //
 // Licensed under the same terms of Redis and ServiceStack: new BSD license.
 //
@@ -60,8 +60,8 @@ namespace ServiceStack.Redis
             Init();
         }
 
-        public RedisClient(string host, int port, string password)
-            : base(host, port, password)
+        public RedisClient(string host, int port, string password = null, long db = DefaultDb)
+            : base(host, port, password, db)
         {
             Init();
         }
@@ -119,7 +119,78 @@ namespace ServiceStack.Redis
                 ? value.ToUtf8Bytes()
                 : null;
 
-            Set(key, bytesValue);
+            base.Set(key, bytesValue);
+        }
+
+        public void SetEntry(string key, string value, TimeSpan expireIn)
+        {
+            var bytesValue = value != null
+                ? value.ToUtf8Bytes()
+                : null;
+
+            SetEx(key, (int)expireIn.TotalSeconds, bytesValue); 
+            
+            //New in 2.6.x - TODO change when 2.6 is most popular
+            //if (expireIn.Milliseconds > 0)
+            //    base.Set(key, bytesValue, 0, (long)expireIn.TotalMilliseconds);
+            //else
+            //    base.Set(key, bytesValue, (int)expireIn.TotalSeconds, 0);
+        }
+
+        public void SetEntryIfExists(string key, string value, TimeSpan expireIn)
+        {
+            var bytesValue = value != null ? value.ToUtf8Bytes() : null;
+
+            if (expireIn.Milliseconds > 0)
+                base.Set(key, bytesValue, 0, (long)expireIn.TotalMilliseconds, exists: true);
+            else
+                base.Set(key, bytesValue, (int)expireIn.TotalSeconds, 0, exists: true);
+        }
+
+        public bool SetEntryIfNotExists(string key, string value)
+        {
+            if (value == null)
+                throw new ArgumentNullException("value");
+
+            return SetNX(key, value.ToUtf8Bytes()) == Success;
+        }
+
+        public void SetEntryIfNotExists(string key, string value, TimeSpan expireIn)
+        {
+            var bytesValue = value != null ? value.ToUtf8Bytes() : null;
+
+            if (expireIn.Milliseconds > 0)
+                base.Set(key, bytesValue, 0, (long)expireIn.TotalMilliseconds, exists: false);
+            else
+                base.Set(key, bytesValue, (int)expireIn.TotalSeconds, 0, exists: false);
+        }
+
+        public void ChangeDb(long db)
+        {
+            Db = db;
+            SendExpectSuccess(Commands.Select, db.ToUtf8Bytes());
+        }
+
+        public List<Dictionary<string, string>> GetClientList()
+        {
+            var clientList = base.ClientList().FromUtf8Bytes();
+            var results = new List<Dictionary<string, string>>();
+
+            var lines = clientList.Split('\n');
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrEmpty(line)) continue;
+
+                var map = new Dictionary<string, string>();
+                var parts = line.Split(' ');
+                foreach (var part in parts)
+                {
+                    var keyValue = part.SplitOnFirst('=');
+                    map[keyValue[0]] = keyValue[1];
+                }
+                results.Add(map);
+            }
+            return results;
         }
 
         public void SetAll(IEnumerable<string> keys, IEnumerable<string> values)
@@ -161,23 +232,6 @@ namespace ServiceStack.Redis
             }
 
             base.MSet(keyBytes, valBytes);
-        }
-
-        public void SetEntry(string key, string value, TimeSpan expireIn)
-        {
-            var bytesValue = value != null
-                ? value.ToUtf8Bytes()
-                : null;
-
-            SetEx(key, (int)expireIn.TotalSeconds, bytesValue);
-        }
-
-        public bool SetEntryIfNotExists(string key, string value)
-        {
-            if (value == null)
-                throw new ArgumentNullException("value");
-
-            return SetNX(key, value.ToUtf8Bytes()) == Success;
         }
 
         public string GetValue(string key)
@@ -230,7 +284,7 @@ namespace ServiceStack.Redis
             return DecrBy(key, count);
         }
 
-        public int AppendToValue(string key, string value)
+        public long AppendToValue(string key, string value)
         {
             return base.Append(key, value.ToUtf8Bytes());
         }
@@ -263,6 +317,25 @@ namespace ServiceStack.Redis
         public TimeSpan GetTimeToLive(string key)
         {
             return TimeSpan.FromSeconds(Ttl(key));
+        }
+
+        public void SetConfig(string configItem, string value)
+        {
+            base.ConfigSet(configItem, value.ToUtf8Bytes());
+        }
+
+        public string GetConfig(string configItem)
+        {
+            var sb = new StringBuilder();
+            var byteArray = base.ConfigGet(configItem);
+            foreach (var bytes in byteArray)
+            {
+                if (sb.Length > 0)
+                    sb.Append(" ");
+
+                sb.Append(bytes.FromUtf8Bytes());
+            }
+            return sb.ToString();
         }
 
         [Obsolete("Renamed to 'As'")]
@@ -403,7 +476,7 @@ namespace ServiceStack.Redis
             return new RedisSubscription(this);
         }
 
-        public int PublishMessage(string toChannel, string message)
+        public long PublishMessage(string toChannel, string message)
         {
             return base.Publish(toChannel, message.ToUtf8Bytes());
         }
@@ -666,6 +739,15 @@ namespace ServiceStack.Redis
             }
         }
 
+        public RedisClient CloneClient()
+        {
+            return new RedisClient(Host, Port, Password, Db)
+            {
+                SendTimeout = SendTimeout,
+                ReceiveTimeout = ReceiveTimeout
+            };
+        }
+
         /// <summary>
         /// Returns key with automatic object id detection in provided value with <typeparam name="T">generic type</typeparam>.
         /// </summary>
@@ -702,22 +784,22 @@ namespace ServiceStack.Redis
 
         #region LUA EVAL
 
-        public int ExecLuaAsInt(string body, params string[] args)
+        public long ExecLuaAsInt(string body, params string[] args)
         {
             return base.EvalInt(body, 0, args.ToMultiByteArray());
         }
 
-        public int ExecLuaAsInt(string luaBody, string[] keys, string[] args)
+        public long ExecLuaAsInt(string luaBody, string[] keys, string[] args)
         {
             return base.EvalInt(luaBody, keys.Length, MergeAndConvertToBytes(keys, args));
         }
 
-        public int ExecLuaShaAsInt(string sha1, params string[] args)
+        public long ExecLuaShaAsInt(string sha1, params string[] args)
         {
             return base.EvalShaInt(sha1, args.Length, args.ToMultiByteArray());
         }
 
-        public int ExecLuaShaAsInt(string sha1, string[] keys, string[] args)
+        public long ExecLuaShaAsInt(string sha1, string[] keys, string[] args)
         {
             return base.EvalShaInt(sha1, keys.Length, MergeAndConvertToBytes(keys, args));
         }

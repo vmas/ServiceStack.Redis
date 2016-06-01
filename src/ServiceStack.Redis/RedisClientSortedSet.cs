@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2010 Liquidbit Ltd.
+// Copyright 2013 ServiceStack.
 //
 // Licensed under the same terms of Redis and ServiceStack: new BSD license.
 //
@@ -91,7 +91,7 @@ namespace ServiceStack.Redis
 		{
 			get
 			{
-				return client.GetSortedSetCount(setId);
+				return (int)client.GetSortedSetCount(setId);
 			}
 		}
 
@@ -152,7 +152,7 @@ namespace ServiceStack.Redis
 			client.StoreUnionFromSets(setId, ofSets.GetIds());
 		}
 
-		public int GetItemIndex(string value)
+		public long GetItemIndex(string value)
 		{
 			return client.GetItemIndexInSortedSet(setId, value);
 		}

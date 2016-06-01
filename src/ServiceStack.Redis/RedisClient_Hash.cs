@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2010 Liquidbit Ltd.
+// Copyright 2013 ServiceStack.
 //
 // Licensed under the same terms of Redis and ServiceStack: new BSD license.
 //
@@ -76,12 +76,12 @@ namespace ServiceStack.Redis
 			base.HMSet(hashId, keys, values);
 		}
 
-        public int IncrementValueInHash(string hashId, string key, int incrementBy)
+		public long IncrementValueInHash(string hashId, string key, int incrementBy)
         {
             return base.HIncrby(hashId, key.ToUtf8Bytes(), incrementBy);
         }
 
-        public int IncrementValueInHash(string hashId, string key, long incrementBy)
+		public long IncrementValueInHash(string hashId, string key, long incrementBy)
         {
             return base.HIncrby(hashId, key.ToUtf8Bytes(), incrementBy);
         }
@@ -106,7 +106,7 @@ namespace ServiceStack.Redis
 			return base.HDel(hashId, ConvertToBytes(keys)) == keys.Length;
 		}
 
-		public int GetHashCount(string hashId)
+		public long GetHashCount(string hashId)
 		{
 			return base.HLen(hashId);
 		}

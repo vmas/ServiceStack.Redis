@@ -16,6 +16,7 @@ namespace ServiceStack.Redis.Tests
 	{
 		const string Value = "Value";
 
+
         public override void OnBeforeEachTest()
         {
             base.OnBeforeEachTest();
@@ -175,12 +176,12 @@ namespace ServiceStack.Redis.Tests
 			Redis.SetEntry("key", "val");
 
 			var unixNow = DateTime.Now.ToUnixTime();
-			var in1Sec = unixNow + 1;
+			var in2Secs = unixNow + 2;
 
-			Redis.ExpireAt("key", in1Sec);
+			Redis.ExpireAt("key", in2Secs);
 
 			Assert.That(Redis.ContainsKey("key"), Is.True);
-			Thread.Sleep(2000);
+			Thread.Sleep(3000);
 			Assert.That(Redis.ContainsKey("key"), Is.False);
 		}
 
@@ -447,12 +448,13 @@ namespace ServiceStack.Redis.Tests
             var keys = 5.Times(x => "key" + x);
             var vals = 5.Times(x => "val" + x);
 
-            var redis = RedisClient.New();
+            using (var redis = RedisClient.New())
+            {
+                redis.SetAll(keys, vals);
 
-            redis.SetAll(keys, vals);
-
-            var all = redis.GetValues(keys);
-            Assert.AreEqual(vals, all);
+                var all = redis.GetValues(keys);
+                Assert.AreEqual(vals, all);
+            }
         }
 
         [Test]
@@ -463,12 +465,13 @@ namespace ServiceStack.Redis.Tests
             var map = new Dictionary<string, string>();
             keys.ForEach(x => map[x] = "val" + x);
 
-            var redis = RedisClient.New();
+            using (var redis = RedisClient.New())
+            {
+                redis.SetAll(map);
 
-            redis.SetAll(map);
-
-            var all = redis.GetValuesMap(keys);
-            Assert.AreEqual(map, all);
+                var all = redis.GetValuesMap(keys);
+                Assert.AreEqual(map, all);
+            }
         }
 
         [Test]
@@ -478,11 +481,13 @@ namespace ServiceStack.Redis.Tests
             map["key_a"] = "123";
             map["key_b"] = null;
 
-            var redis = RedisClient.New();
-            redis.SetAll(map);
+			using (var redis = RedisClient.New())
+			{
+				redis.SetAll(map);
 
-            Assert.That(redis.Get<string>("key_a"), Is.EqualTo("123"));
-            Assert.That(redis.Get("key_b"), Is.EqualTo(""));
+				Assert.That(redis.Get<string>("key_a"), Is.EqualTo("123"));
+				Assert.That(redis.Get("key_b"), Is.EqualTo(""));
+			}
         }
 
 
@@ -493,36 +498,111 @@ namespace ServiceStack.Redis.Tests
             map["key_a"] = "123".ToUtf8Bytes();
             map["key_b"] = null;
 
-            var redis = RedisClient.New();
-            redis.SetAll(map);
+            using (var redis = RedisClient.New())
+            {
+                redis.SetAll(map);
 
-            Assert.That(redis.Get<string>("key_a"), Is.EqualTo("123"));
-            Assert.That(redis.Get("key_b"), Is.EqualTo(""));
+                Assert.That(redis.Get<string>("key_a"), Is.EqualTo("123"));
+                Assert.That(redis.Get("key_b"), Is.EqualTo(""));
+            }
         }
 
         [Test]
         public void Should_reset_slowlog()
         {
-            var redis = RedisClient.New();
-            redis.SlowlogReset();
+            using (var redis = RedisClient.New())
+            {
+                redis.SlowlogReset();
+            }
         }
 
         [Test]
         public void Can_get_showlog()
         {
-            var redis = RedisClient.New();
-            var log = redis.GetSlowlog(10);
-
-            foreach (var t in log)
+            using (var redis = RedisClient.New())
             {
-                Console.WriteLine(t.Id);
-                Console.WriteLine(t.Duration);
-                Console.WriteLine(t.Timestamp);
-                Console.WriteLine(string.Join(":", t.Arguments));
+                var log = redis.GetSlowlog(10);
+
+                foreach (var t in log)
+                {
+                    Console.WriteLine(t.Id);
+                    Console.WriteLine(t.Duration);
+                    Console.WriteLine(t.Timestamp);
+                    Console.WriteLine(string.Join(":", t.Arguments));
+                }
             }
         }
 
 
-	}
+        [Test]
+        public void Can_change_db_at_runtime()
+        {
+            using (var redis = new RedisClient(TestConfig.SingleHost, TestConfig.RedisPort, db: 1))
+            {
+                var val = Environment.TickCount;
+                var key = "test" + val;
+                try
+                {
+                    redis.Set(key, val);
+                    redis.ChangeDb(2);
+                    Assert.That(redis.Get<int>(key), Is.EqualTo(0));
+                    redis.ChangeDb(1);
+                    Assert.That(redis.Get<int>(key), Is.EqualTo(val));
+                    redis.Dispose();
+                }
+                finally
+                {
+                    redis.ChangeDb(1);
+                    redis.Del(key);
+                }
+            }
+        }
+
+        [Test]
+        public void Can_Set_Expire_Seconds()
+        {
+            Redis.SetEntry("key", "val", expireIn: TimeSpan.FromSeconds(1));
+            Assert.That(Redis.ContainsKey("key"), Is.True);
+            Thread.Sleep(2000);
+            Assert.That(Redis.ContainsKey("key"), Is.False);
+        }
+
+        [Test]
+        public void Can_Set_Expire_MilliSeconds()
+        {
+            Redis.SetEntry("key", "val", expireIn: TimeSpan.FromMilliseconds(1000));
+            Assert.That(Redis.ContainsKey("key"), Is.True);
+            Thread.Sleep(2000);
+            Assert.That(Redis.ContainsKey("key"), Is.False);
+        }
+
+        [Test]
+        public void Can_Set_Expire_Seconds_if_exists()
+        {
+            Redis.SetEntryIfExists("key", "val", expireIn: TimeSpan.FromMilliseconds(1500));
+            Assert.That(Redis.ContainsKey("key"), Is.False);
+
+            Redis.SetEntry("key", "val");
+            Redis.SetEntryIfExists("key", "val", expireIn: TimeSpan.FromMilliseconds(1000));
+            Assert.That(Redis.ContainsKey("key"), Is.True);
+
+            Thread.Sleep(2000);
+            Assert.That(Redis.ContainsKey("key"), Is.False);
+        }
+
+        [Test]
+        public void Can_Set_Expire_Seconds_if_not_exists()
+        {
+            Redis.SetEntryIfNotExists("key", "val", expireIn: TimeSpan.FromMilliseconds(1000));
+            Assert.That(Redis.ContainsKey("key"), Is.True);
+
+            Thread.Sleep(2000);
+            Assert.That(Redis.ContainsKey("key"), Is.False);
+
+            Redis.Remove("key");
+            Redis.SetEntryIfNotExists("key", "val", expireIn: TimeSpan.FromMilliseconds(1000));
+            Assert.That(Redis.ContainsKey("key"), Is.True);
+        }
+    }
 
 }

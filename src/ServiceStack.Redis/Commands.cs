@@ -48,6 +48,11 @@ namespace ServiceStack.Redis
         public readonly static byte[] Monitor = "MONITOR".ToUtf8Bytes();		//missing
         public readonly static byte[] Debug = "DEBUG".ToUtf8Bytes();			//missing
         public readonly static byte[] Config = "CONFIG".ToUtf8Bytes();			//missing
+        public readonly static byte[] Client = "CLIENT".ToUtf8Bytes();
+        public readonly static byte[] List = "LIST".ToUtf8Bytes();
+        public readonly static byte[] Kill = "KILL".ToUtf8Bytes();
+        public readonly static byte[] SetName = "SETNAME".ToUtf8Bytes();
+        public readonly static byte[] GetName = "GETNAME".ToUtf8Bytes();
         //public readonly static byte[] Get = "GET".ToUtf8Bytes();
         //public readonly static byte[] Set = "SET".ToUtf8Bytes();
 
@@ -73,13 +78,19 @@ namespace ServiceStack.Redis
         public readonly static byte[] SetRange = "SETRANGE".ToUtf8Bytes();
         public readonly static byte[] GetBit = "GETBIT".ToUtf8Bytes();
         public readonly static byte[] SetBit = "SETBIT".ToUtf8Bytes();
+        public readonly static byte[] BitCount = "BITCOUNT".ToUtf8Bytes();
 
         public readonly static byte[] RPush = "RPUSH".ToUtf8Bytes();
         public readonly static byte[] LPush = "LPUSH".ToUtf8Bytes();
+        public readonly static byte[] RPushX = "RPUSHX".ToUtf8Bytes();
+        public readonly static byte[] LPushX = "LPUSHX".ToUtf8Bytes();
         public readonly static byte[] LLen = "LLEN".ToUtf8Bytes();
         public readonly static byte[] LRange = "LRANGE".ToUtf8Bytes();
         public readonly static byte[] LTrim = "LTRIM".ToUtf8Bytes();
         public readonly static byte[] LIndex = "LINDEX".ToUtf8Bytes();
+        public readonly static byte[] LInsert = "LINSERT".ToUtf8Bytes();
+        public readonly static byte[] Before = "BEFORE".ToUtf8Bytes();
+        public readonly static byte[] After = "AFTER".ToUtf8Bytes();
         public readonly static byte[] LSet = "LSET".ToUtf8Bytes();
         public readonly static byte[] LRem = "LREM".ToUtf8Bytes();
         public readonly static byte[] LPop = "LPOP".ToUtf8Bytes();
@@ -169,7 +180,11 @@ namespace ServiceStack.Redis
         public readonly static byte[] Load = "LOAD".ToUtf8Bytes();
         //public readonly static byte[] Exists = "EXISTS".ToUtf8Bytes();
         public readonly static byte[] Flush = "FLUSH".ToUtf8Bytes();
-        public readonly static byte[] Kill = "KILL".ToUtf8Bytes();
         public readonly static byte[] Slowlog = "SLOWLOG".ToUtf8Bytes();
+
+        public readonly static byte[] Ex = "EX".ToUtf8Bytes();
+        public readonly static byte[] Px = "PX".ToUtf8Bytes();
+        public readonly static byte[] Nx = "NX".ToUtf8Bytes();
+        public readonly static byte[] Xx = "XX".ToUtf8Bytes();
     }
 }

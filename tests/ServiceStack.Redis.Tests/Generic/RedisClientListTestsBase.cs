@@ -6,6 +6,7 @@ using ServiceStack.Common.Extensions;
 using ServiceStack.Common.Tests.Models;
 using ServiceStack.Redis.Generic;
 using ServiceStack.Text;
+using ServiceStack.Redis.Tests.Support;
 
 namespace ServiceStack.Redis.Tests.Generic
 {
@@ -102,8 +103,8 @@ namespace ServiceStack.Redis.Tests.Generic
         public void Can_BlockingDequeueItemFromList()
 		{
 			var storeMembers = Factory.CreateList();
-			storeMembers.ForEach(x => redis.AddItemToList(List, x));
-
+			storeMembers.ForEach(x => redis.EnqueueItemOnList(List, x));
+						
             var item1 = redis.BlockingDequeueItemFromList(List, new TimeSpan(0, 0, 1));
 
 			Factory.AssertIsEqual(item1, (T)storeMembers.First());

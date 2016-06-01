@@ -9,7 +9,8 @@ namespace ServiceStack.Redis.Tests.Generic
 {
 	[TestFixture, Category("Integration")]
 	public class RedisTypedClientTests
-	{
+        : RedisClientTestsBase
+    {
 		public class CacheRecord
 		{
 			public CacheRecord()
@@ -38,6 +39,8 @@ namespace ServiceStack.Redis.Tests.Generic
 		[SetUp]
 		public virtual void OnBeforeEachTest()
 		{
+            base.OnBeforeEachTest();
+
 			if (Redis != null) Redis.Dispose();
 			Redis = new RedisClient(TestConfig.SingleHost);
 		    Redis.NamespacePrefix = "RedisTypedClientTests:";
@@ -90,14 +93,35 @@ namespace ServiceStack.Redis.Tests.Generic
 
 			RedisTyped.Store(cachedRecord);
 
-			var in1Sec = DateTime.Now.AddSeconds(1);
+			var in2Secs = DateTime.Now.AddSeconds(2);
 
-			RedisTyped.ExpireAt("key", in1Sec);
+			RedisTyped.ExpireAt("key", in2Secs);
 
 			Assert.That(RedisTyped.GetById("key"), Is.Not.Null);
-			Thread.Sleep(2000);
+			Thread.Sleep(3000);
 			Assert.That(RedisTyped.GetById("key"), Is.Null);
 		}
+
+        [Test]
+        public void Can_Delete_All_Items()
+        {
+            var cachedRecord = new CacheRecord
+            {
+                Id = "key",
+                Children = {
+					new CacheRecordChild { Id = "childKey", Data = "data" }
+				}
+            };
+
+            RedisTyped.Store(cachedRecord);
+
+            Assert.That(RedisTyped.GetById("key"), Is.Not.Null);
+
+            RedisTyped.DeleteAll();
+
+            Assert.That(RedisTyped.GetById("key"), Is.Null);
+
+        }
 	}
 
 }

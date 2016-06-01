@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2010 Liquidbit Ltd.
+// Copyright 2013 ServiceStack.
 //
 // Licensed under the same terms of Redis and ServiceStack: new BSD license.
 //
@@ -99,7 +99,7 @@ namespace ServiceStack.Redis
 		{
 			get
 			{
-				return client.GetListCount(listId);
+				return (int)client.GetListCount(listId);
 			}
 		}
 
@@ -163,12 +163,12 @@ namespace ServiceStack.Redis
 			client.TrimList(listId, keepStartingFrom, keepEndingAt);
 		}
 
-		public int RemoveValue(string value)
+		public long RemoveValue(string value)
 		{
 			return client.RemoveItemFromList(listId, value);
 		}
 
-		public int RemoveValue(string value, int noOfMatches)
+		public long RemoveValue(string value, int noOfMatches)
 		{
 			return client.RemoveItemFromList(listId, value, noOfMatches);
 		}

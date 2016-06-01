@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2010 Liquidbit Ltd.
+// Copyright 2013 ServiceStack.
 //
 // Licensed under the same terms of Redis and ServiceStack: new BSD license.
 //
@@ -57,7 +57,7 @@ namespace ServiceStack.Redis
 			client.SetRangeInHash(hashId, items);
 		}
 
-		public int IncrementValue(string key, int incrementBy)
+		public long IncrementValue(string key, int incrementBy)
 		{
 			return client.IncrementValueInHash(hashId, key, incrementBy);
 		}
@@ -97,7 +97,7 @@ namespace ServiceStack.Redis
 
 		public int Count
 		{
-			get { return client.GetHashCount(hashId); }
+			get { return (int)client.GetHashCount(hashId); }
 		}
 
 		public bool IsReadOnly

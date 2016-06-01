@@ -16,10 +16,20 @@ namespace ServiceStack.Redis.Tests
 			Debug.WriteLine("{0}", string.Format(fmt, args).Trim());
 		}
 
+		[TestFixtureSetUp]
+		public void TestFixtureSetUp()
+		{
+			RedisClient.NewFactoryFn = () => new RedisClient(TestConfig.SingleHost);
+            using (var redis = RedisClient.New())
+            {
+                redis.FlushAll();
+            }
+		}
+
 		[SetUp]
 		public virtual void OnBeforeEachTest()
 		{
-			Redis = new RedisClient(TestConfig.SingleHost);
+			Redis = RedisClient.New();
 		}
 
         [TearDown]
